@@ -1,4 +1,4 @@
-# Entra Agent ID Developer Onboarding and Deep Dive
+# Entra Agent ID developer onboarding and deep dive
 
 ## Prerequisites
  * A Microsoft Entra ID tenant that is onboarded to the Entra Agent ID preview
@@ -8,11 +8,15 @@
    * User.ReadWrite.All – to create the Agent User Id
    * OAuth2PermissionGrants.ReadWrite.All – to grant admin consent for the Agent User
  * AI application client – this will represent your AI application that you are developing
- * Optional – Insomnia, all requests are provided as Insomnia Collection ((Insomnia5-AgentID.yaml)[./Insomnia5-AgentID.yaml]) and PowerShell ((AgentID-PowerShell.ps1)[./AgentID-PowerShell.ps1])
+ * Optional – Insomnia, all requests are provided as [Insomnia](https://insomnia.rest/) Collection ([Insomnia5-AgentID.yaml](./Insomnia5-AgentID.yaml)) and PowerShell ([AgentID-PowerShell.ps1](./AgentID-PowerShell.ps1))
+
+ > **Note on the permissions**
+ > - `Application.ReadWrite.OwnedBy` permission is only requirement for scripting in this guide to work. The script exposes an API on the Agent Blueprint - section 01.03, and adds client credential - section 01.04.
+  > - `User.ReadWrite.All` permission is a temporary requirement during preview. This is required to create the `Agentic User` (Digital Colleague), which is a `User` object with some special properties.
+ > - `OAuth2PermissionGrants.ReadWrite.All` permission is a temporary requirement during preview. This is required for the script to grant admin consent for the digital colleague (Agentic User) to access data. Check section (4) for more details.
 
 ## Insomnia setup
-Import the provided Insomnia5-AgentID.yaml collection to Insomnia
-Open the Agent ID collection
+Import the provided Insomnia5-AgentID.yaml collection to [Insomnia](https://insomnia.rest/) and open the Agent ID collection.
 
 ### Update the Base environment with the values for your tenant
  `token_url`: "https://login.microsoftonline.com/YOUR-TENANT-ID/oauth2/v2.0/token",  
@@ -36,15 +40,15 @@ TODO: Insert graphic
 
 ### 01.01. Create the Agent Identity Blueprint (application)
 
-```
-POST /beta/applications/
-host: graph.microsoft.com
-OData-Version: 4.0
-authorization: Bearer
-{
-  "@odata.type": "Microsoft.Graph.AgentIdentityBlueprint",
-  "displayName": "[as]-agent-identity-blueprint"
-}
+```bash
+curl -X POST "https://graph.microsoft.com/beta/applications/" \
+  -H "Content-Type: application/json" \
+  -H "OData-Version: 4.0" \
+  -H "Authorization: Bearer {{ ACCESS_TOKEN_FROM_OAUTH2_CLIENT_CREDENTIALS }}" \
+  -d '{
+    "@odata.type": "Microsoft.Graph.AgentIdentityBlueprint",
+    "displayName": "[as]-agent-id-blueprint 20250926"
+  }'
 ```
 
 Sample response
@@ -68,12 +72,13 @@ Sample response
 ### 01.02. Create the Agent Blueprint Service Principal
 
 ```
-POST /beta/serviceprincipals/graph.agentServicePrincipal
-host: graph.microsoft.com
-authorization: Bearer
-{
-  "appId": "{{ _.agent_blueprint_appId }}"
-}
+curl -X POST "https://graph.microsoft.com/beta/serviceprincipals/graph.agentIdentityBlueprintPrincipal" \
+  -H "Content-Type: application/json" \
+  -H "OData-Version: 4.0" \
+  -H "Authorization: Bearer {{ ACCESS_TOKEN_FROM_OAUTH2_CLIENT_CREDENTIALS }}" \
+  -d '{
+    "appId": "{{ _.agent_blueprint_appId }}"
+  }'
 ```
 
 Sample response:
@@ -101,15 +106,15 @@ Sample response:
  It is recommended to use managed identity in production environment!
 
 ```
-POST /beta/applications/{{_.agent_blueprint_appObjectId}}/addPassword
-host: graph.microsoft.com
-authorization: Bearer
-{
-  "passwordCredential": {
-    "displayName": "Dummy Secret",
-    "endDateTime": "2026-08-05T23:59:59Z"
-  }
-}
+curl -X POST "https://graph.microsoft.com/beta/applications/{{ _.agent_blueprint_appObjectId }}/addPassword" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {{ ACCESS_TOKEN_FROM_OAUTH2_CLIENT_CREDENTIALS }}" \
+  -d '{
+    "passwordCredential": {
+      "displayName": "Dummy Secret",
+      "endDateTime": "2026-08-05T23:59:59Z"
+    }
+  }'
 ```
 
 Sample response
@@ -118,7 +123,7 @@ Sample response
 	"@odata.context": "https://xxxx#microsoft.graph.passwordCredential",
 	"customKeyIdentifier": null,
 	"endDateTime": "2026-08-05T23:59:59Z",
-	"keyId": "e6912b08-c00f-46ea-a8a6-6ae04bb50bd3",
+	"keyId": "e6912b08-c00f-1234-a8a6-6ae04bb50bd3",
 	"startDateTime": "2025-09-26T08:00:42.4974553Z",
 	"secretText": "ntu*******",
 	"hint": "ntu",
@@ -134,24 +139,24 @@ Sample response
 We will need this for the scenario where the AI Agent is performing tasks *on-behalf* of the end-user and carrying the end-user security context.
 
 ```
-POST /beta/serviceprincipals/graph.agentServicePrincipal
-host: graph.microsoft.com
-authorization: Bearer
-{
-  "identifierUris": ["api://{{ _.agent_blueprint_appId }}"],
-  "api": {
-    "oauth2PermissionScopes": [
-      {
-        "adminConsentDescription": "Allow the application to access the agent on behalf of the signed-in user.",
-        "adminConsentDisplayName": "Access agent",
-        "id": "{% faker 'guid' %}",
-        "isEnabled": true,
-        "type": "User",
-        "value": "access_agent"
-      }
-    ]
-  }
-}
+curl -X PATCH "https://graph.microsoft.com/beta/applications/{{ _.agent_blueprint_appObjectId }}" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {{ ACCESS_TOKEN_FROM_OAUTH2_CLIENT_CREDENTIALS }}" \
+  -d '{
+    "identifierUris": ["api://{{ _.agent_blueprint_appId }}"],
+    "api": {
+      "oauth2PermissionScopes": [
+        {
+          "adminConsentDescription": "Allow the application to access the agent on behalf of the signed-in user.",
+          "adminConsentDisplayName": "Access agent",
+          "id": "{{ GENERATED_GUID }}",
+          "isEnabled": true,
+          "type": "User",
+          "value": "access_agent"
+        }
+      ]
+    }
+  }'
 ``` 
 
 A successful response would carry `HTTP 204` status code with empty response body.
@@ -163,14 +168,14 @@ After an Agent Blueprint is created we will need an Agent Identity. This is a sp
 ### 02.01. Creating the Agent Identity
 
 ```
-POST /beta/serviceprincipals/Microsoft.Graph.AgentIdentity
-host: graph.microsoft.com
-authorization: Bearer <agent blueprint ms graph token>
-02. Creating Agent Identity (autonomous agent)
-{
-    "displayName": "[as]-from-id-blueprint",
+curl -X POST "https://graph.microsoft.com/beta/serviceprincipals/Microsoft.Graph.AgentIdentity" \
+  -H "Content-Type: application/json" \
+  -H "OData-Version: 4.0" \
+  -H "Authorization: Bearer {{ ACCESS_TOKEN_FROM_AGENT_BLUEPRINT_OAUTH2 }}" \
+  -d '{
+    "displayName": "[as] from-id-blueprint",
     "agentAppId": "{{ _.agent_blueprint_appId }}"
-}
+  }
 ```
 Sample response
 ```JSON
@@ -183,7 +188,7 @@ Sample response
   "appId": "c81ab79b-fe7f-4e19-b1a3-b527f48622f4",
 "appOwnerOrganizationId": null,
   "appRoleAssignmentRequired": false,
-"displayName": "[as]-from-id-blueprint",
+"displayName": "[as] from-id-blueprint",
   "agentAppId": "5d674406-dba3-4dee-afbd-de1887403dff",
   ...
 }
@@ -199,19 +204,19 @@ This is a special User object that will represent an Agentic User - `Digital Col
  > *Credentials*: an MS Graph access token obtained via the management app credentials
 
 ```
-POST /beta/users
-host: graph.microsoft.com
-OData-Version: 4.0
-authorization: Bearer
-03. Creating Agent User (digital colleague)
-{
- "@odata.type":"microsoft.graph.agentUser",
- "displayName": "[as] Agent ID User",
- "userPrincipalName": "{{ _.agent_user_upn }}",
- "mailNickname": "{{ _.agent_user_mailNickName }}",
- "accountEnabled": true,
- "identityParentId":"{{ _.agent_identity_clientId }}"
-}
+curl -X POST "https://graph.microsoft.com/beta/users" \
+  -H "Content-Type: application/json" \
+  -H "OData-Version: 4.0" \
+  -H "Authorization: Bearer {{ ACCESS_TOKEN_FROM_OAUTH2_CLIENT_CREDENTIALS }}" \
+  -d '{
+    "@odata.type":"microsoft.graph.agentUser",
+    "displayName": "[as] Agent ID User",
+    "userPrincipalName": "{{ _.agent_user_upn }}",
+    "mailNickname": "{{ _.agent_user_mailNickName }}",
+    "accountEnabled": true,
+    "identityParentId":"{{ _.agent_identity_clientId }}"
+  }'
+```
 
 Sample repsonse
 ```JSON
@@ -238,19 +243,18 @@ Sample repsonse
 Following the principle of least privilege, an Agentic User does not have any permissions to any resources by default. For this identity to access any information, a consent must be explicitly granted. In this example we will grant permissions to be able to sign-in and read its own user data, read e-mails and read its own group memberships.
 
 ```
-POST /beta/oauth2PermissionGrants
-host: graph.microsoft.com
-authorization: Bearer
-
-{
- "clientId": "{{ _.agent_identity_clientId }}",
- "consentType": "Principal",
- "principalId": "{{ _.agent_identity_userId }}",
- "resourceId": "{{ _.ms_graph_object_id }}",
- "scope":"User.Read groupmember.read.all mail.read",
- "startTime": "2025-09-24T00:00:00",
- "expiryTime":"2026-09-24T00:00:00"
-}
+curl -X POST "https://graph.microsoft.com/beta/oauth2PermissionGrants" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {{ ACCESS_TOKEN_FROM_OAUTH2_CLIENT_CREDENTIALS }}" \
+  -d '{
+    "clientId": "{{ _.agent_identity_clientId }}",
+    "consentType": "Principal",
+    "principalId": "{{ _.agent_identity_userId }}",
+    "resourceId": "{{ _.ms_graph_object_id }}",
+    "scope":"User.Read groupmember.read.all mail.read",
+    "startTime": "2025-09-24T00:00:00",
+    "expiryTime":"2026-09-24T00:00:00"
+  }'
 ``` 
 
 Sample response
@@ -275,12 +279,12 @@ Authentication of the digital colleague follows an extension to the OAuth 2.0 au
 ### 04.01. Obtain a Federated Identity Credetial (FIC) for the Agent Blueprint
  > **Warning**: In this sample we use client credentials (client id and client secret) to authenticate the Agent Blueprint. It is recommended to use Managed Identity for production environments. 
 ```
-POST _.token_url
-	&scope=api://AzureADTokenExchange/.default
-	&grant_type=client_credentials
-	&client_id=<agent_blueprint_client_id>
-	&client_secret=<agent_blueprint_secret>
-	&fmi_path=<agent_id_client_id>
+curl -X POST "{{ _.token_url }}" \
+  -H "Content-Type: multipart/form-data" \
+  -u "{{ _.agent_blueprint_appId }}:{{ _.agent_blueprint_clientSecret }}" \
+  -F "scope=api://AzureADTokenExchange/.default" \
+  -F "grant_type=client_credentials" \
+  -F "fmi_path={{ _.agent_identity_clientId }}"
 ```
 
  > **Note**: The specific extension here is the additional parameter `fmi_path` which points to the `Agent Identity` for which we want to get the FIC token
@@ -289,36 +293,35 @@ We will call the resulting `access_token` as `agent_blueprint_fic-token` to easi
 
 ### 04.02. Obtain a Federated Identity Credential (FIC) for the Agent Identity 
 ```
-POST _.token_url
-	&scope=api://AzureADTokenExchange/.default
-	&grant_type=client_credentials
-	&client_id=<agent_id_client_id>
-	&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
-	&client_assertion=agent_blueprint_fic-token
+curl -X POST "{{ _.token_url }}" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "client_id={{ _.agent_identity_clientId }}&scope=api://AzureADTokenExchange/.default&grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion={{ _.agent_blueprint_ficToken }}"
+
 ```
 
 We will call the resulting `access_token` as `agent_id_fic-token` to easily recognize its usage in the following calls.
 
 ### 04.03. Obtain an Agentic User token for MS Graph using the agent_blueprint_fic-token and agent_id_fic-token
+
 ```
-POST _.token_url
-	&scope=https://graph.microsoft.com/.default
-	&grant_type=user_fic
-	&requested_token_use=on_behalf_of
-	&client_id=<agent_id_client_id>
-	&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
-	&client_assertion=<agent_blueprint_fic-token>
-	&user_federated_identity_credential=<agent_id_fic-token>
-	&username=<agent_user_upn>
+curl -X POST "{{ _.token_url }}" \
+  -H "Content-Type: multipart/form-data" \
+  -F "client_id={{ _.agent_identity_clientId }}" \
+  -F "client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer" \
+  -F "client_assertion={{ _.agent_blueprint_ficToken }}" \
+  -F "grant_type=user_fic" \
+  -F "requested_token_use=on_behalf_of" \
+  -F "scope=https://graph.microsoft.com/.default" \
+  -F "username={{ _.agent_user_upn }}" \
+  -F "user_federated_identity_credential={{ _.agent_identity_ficToken }}"
 ```
 
 We will call the resulting `access_token` as `agent-user-token` for the following calls
 
 ### 04.04. Use the agent-user-token to call MS Graph /me endpoint
 ```
-GET /v1.0/me
-	Host: graph.microsoft.com
-	authorization: Bearer <agent-user-token>
+curl -X GET "https://graph.microsoft.com/v1.0/me" \
+  -H "Authorization: Bearer {{ _.agent_user_accessToken }}"
 ```
 
 Sample response
@@ -339,18 +342,32 @@ Sample response
 }
 ```
 
+### 04.05. Get the groups the Agentic User (Digital Colleague) is member of
+
+In this example we will use MS Graph to get the groups for which the agent user is member of.
+To effectively test this functionality, you may want to manually add the agent user to some security groups in the Entra admin center.
+
+```
+curl -X POST "https://graph.microsoft.com/v1.0/me/getMemberGroups" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {{ _.agent_user_accessToken }}" \
+  -d '{
+    "securityEnabledOnly": true
+  }'
+```
+
 ## 05 Authenticate the Agent Identity (Autonomous Agent)
 
 ### 05.01. Obtain the Agent Blueprint FIC token
  > **Warning**: In this sample we use client credentials (client id and client secret) to authenticate the Agent Blueprint. It is recommended to use Managed Identity for production environments. 
 
 ```
-POST _.token_url
-	&scope=api://AzureADTokenExchange/.default
-	&grant_type=client_credentials
-	&client_id=<agent_blueprint_client_id>
-	&client_secret=<agent_blueprint_secret>
-	&fmi_path=<agent_id_client_id>
+curl -X POST "{{ _.token_url }}" \
+  -H "Content-Type: multipart/form-data" \
+  -u "{{ _.agent_blueprint_appId }}:{{ _.agent_blueprint_clientSecret }}" \
+  -F "scope=api://AzureADTokenExchange/.default" \
+  -F "grant_type=client_credentials" \
+  -F "fmi_path={{ _.agent_identity_clientId }}"
 ```
 
  > **Note**: The specific extension here is the additional parameter `fmi_path` which points to the `Agent Identity` for which we want to get the FIC token
@@ -358,13 +375,11 @@ POST _.token_url
 We will call the resulting `access_token` as `agent_blueprint_fic-token` to easily recognize its usage in the following calls.
 
 ### 05.02. Obtain the Agent Identity MS Graph access token
+
 ```
-POST _.token_url
-	&scope=https://graph.microsoft.com/.default
-	&grant_type=client_credentials
-	&client_id=<agent_id_client_id>
-	&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
-	&client_assertion=<agent_blueprint_fic-token>
+curl -X POST "{{ _.token_url }}" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "client_id={{ _.agent_identity_clientId }}&scope=https://graph.microsoft.com/.default&grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion={{ _.agent_blueprint_ficToken }}"
 ```
 
 We can now use the resulting access token to access any resource the Agent Identity is authorized to access.
@@ -378,8 +393,11 @@ For this scenario we will use authorization code folw. We will use the `client i
 
 Open browser and navigate to:
 ```
-https://login.microsoftonline.com/8e9ff323-8255-4620-8bc3-06637b146e51/oauth2/v2.0/authorize?client_id=<AI_APP_CLIENT_ID>&response_type=code&redirect_uri=https%3a%2f%2fjwt.ms&scope=api%3a%2f%2f<AGENT_ID_CLIENT_ID>%2faccess_agent+offline_access&state=rnd-463866&response_mode=query
+https://login.microsoftonline.com/<TENANT_ID>/oauth2/v2.0/authorize?client_id=<AI_APP_CLIENT_ID>&response_type=code&redirect_uri=https%3a%2f%2fjwt.ms&scope=api%3a%2f%2f<AGENT_ID_CLIENT_ID>%2faccess_agent+offline_access&state=rnd-463866&response_mode=query
 ```
+# Note: This is an OAuth2 authorization code flow that requires user interaction
+# The final request to https://jwt.ms is just to decode the JWT token
+
 
 Here all the specific parameters for better readibility:
 
@@ -397,12 +415,7 @@ After authenticating you will be redirected to the default reply url with a `cod
 Note that the `scope` and `redirect_uri` must exactly match the values provided during the authorization code request flow. We use `https://jwt.ms` as redirect uri for demo purposes.
 
 ```
-POST _.token_url
-
-	&client_id=<AI_APP_CLIENT_ID>
-	&scope=api%3a%2f%2f<AGENT_ID_CLIENT_ID>%2faccess_agent+offline_access
-	&code=OAAABAAAAiL9Kn2Z27UubvWFPbm0gLWQJVzCTE9UkP3pSx1aXxUjq3n8b2JRLk4OxVXr...
-	&redirect_uri=http%3A%2F%2Fjwt.ms%2F
-	&grant_type=authorization_code
-	&client_secret=<AI_APP_CLIENT_SECRET> 
+curl -X POST "{{ _.token_url }}" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "client_id={{ _.ai_client_id }}&client_secret={{ _.ai_client_secret }}&grant_type=authorization_code&code={{ AUTHORIZATION_CODE }}&redirect_uri=https://jwt.ms&scope={{ _.scope }}%20offline_access"
 ```
