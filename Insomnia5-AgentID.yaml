@@ -1,0 +1,847 @@
+type: collection.insomnia.rest/5.0
+name: Agent ID
+meta:
+  id: wrk_9000d0a1b9074e128c76187bf0a5dd77
+  created: 1758052743183
+  modified: 1758052743183
+  description: ""
+collection:
+  - name: 01 Create Agent Blueprint (high privilege credentials)
+    meta:
+      id: fld_7cb57690214744f7a81833536a0569a7
+      created: 1758052755066
+      modified: 1758873648268
+      sortKey: -1758696883717
+      description: ""
+    children:
+      - url: https://graph.microsoft.com/beta/applications/
+        name: 01.01 Create Agent Id Blueprint
+        meta:
+          id: req_4134e86ff9f34e29bfa0e9dbb6c0b5b0
+          created: 1758789777124
+          modified: 1758873623369
+          isPrivate: false
+          description: ""
+          sortKey: -1758696477678
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "@odata.type": "Microsoft.Graph.AgentIdentityBlueprint",
+              "displayName": "[as]-agent-id-blueprint 20250926"
+            }
+        headers:
+          - id: pair_389e76a2382a4e049d936f6c00ead7e6
+            name: Content-Type
+            value: application/json
+          - id: pair_ae9af4e18fac4aba988246a8871df044
+            name: User-Agent
+            value: insomnia/11.3.0
+          - description: ""
+            disabled: false
+            id: pair_5b7360927e60477d9548055857a1487e
+            name: OData-Version
+            value: "4.0"
+        scripts:
+          afterResponse: >-
+            if(insomnia.response.code == 201){
+            	const jsonBody = insomnia.response.json();
+            	insomnia.environment.set("agent_blueprint_appId", jsonBody.appId);
+            	insomnia.environment.set("agent_blueprint_appObjectId", jsonBody.id);
+            }
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: https://graph.microsoft.com/beta/serviceprincipals/graph.agentIdentityBlueprintPrincipal
+        name: 01.02 Create Agent Id Blueprint Service Principal
+        meta:
+          id: req_2456360377eb44d089eeaf1066d6b810
+          created: 1758790245262
+          modified: 1758813542719
+          isPrivate: false
+          description: ""
+          sortKey: -1758656017480.5
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "appId": "{{ _.agent_blueprint_appId }}"
+            }
+        headers:
+          - id: pair_92cb9e86c94c47378da1fa057b80ae23
+            name: Content-Type
+            value: application/json
+          - id: pair_60c657ea20254c1698c1aa020eaf9e31
+            name: User-Agent
+            value: insomnia/11.3.0
+          - description: ""
+            disabled: false
+            id: pair_54eaa280150243b392c22bda40dbf533
+            name: OData-Version
+            value: "4.0"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: https://graph.microsoft.com/beta/applications/{{
+          _.agent_blueprint_appObjectId }}
+        name: 01.04 Expose an API for the blueprint
+        meta:
+          id: req_944925cd9af94ccc807d123636603c74
+          created: 1758793354278
+          modified: 1758805395365
+          isPrivate: false
+          description: ""
+          sortKey: -1758656017280.5
+        method: PATCH
+        body:
+          mimeType: application/json
+          text: >-
+            {
+                "identifierUris": ["api://{{ _.agent_blueprint_appId }}"],
+                "api": {
+                  "oauth2PermissionScopes": [
+                    {
+                      "adminConsentDescription": "Allow the application to access the agent on behalf of the signed-in user.",
+                      "adminConsentDisplayName": "Access agent",
+                      "id": "{% faker 'guid' %}",
+                      "isEnabled": true,
+                      "type": "User",
+                      "value": "access_agent"
+                    }
+                  ]
+              }
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/11.3.0
+        scripts:
+          afterResponse: >-
+            if(insomnia.response.code < 210){
+            	insomnia.environment.set("scope", "api://{{_.agent_blueprint_appObjectId}}/access_agent");
+            }
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: https://graph.microsoft.com/beta/applications/{{
+          _.agent_blueprint_appObjectId }}/addPassword
+        name: 01.03 Add client secret to the Agent App Reg
+        meta:
+          id: req_4cd0ebdbb59442a4afb598f4ea573330
+          created: 1758793357298
+          modified: 1758805333325
+          isPrivate: false
+          description: ""
+          sortKey: -1758656017380.5
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "passwordCredential": {
+                "displayName": "Dummy Secret",
+                "endDateTime": "2026-08-05T23:59:59Z"
+              }
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - name: User-Agent
+            value: insomnia/11.3.0
+        scripts:
+          preRequest: ""
+          afterResponse: >-
+            if(insomnia.response.code == 200){
+            	const jsonBody = insomnia.response.json();
+            	insomnia.environment.set("agent_blueprint_clientSecret", jsonBody.secretText);
+            }
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+    authentication:
+      type: oauth2
+      grantType: client_credentials
+      clientSecret: "{{ _.client_secret }}"
+      clientId: "{{ _.client_id }}"
+      accessTokenUrl: "{{ _.token_url }}"
+      scope: https://graph.microsoft.com/.default
+  - name: 02 Create Agent Id (using Agent Blueprint credentials)
+    meta:
+      id: fld_c911748cb89346e7b7e8e1ee9200828c
+      created: 1758696883617
+      modified: 1758873707772
+      sortKey: -1758696883692
+      description: ""
+    children:
+      - url: https://graph.microsoft.com/beta/serviceprincipals/Microsoft.Graph.AgentIdentity
+        name: 02.01 Create Agent Identity
+        meta:
+          id: req_7f0467a9eb5f46199b0f96019165759e
+          created: 1758697212084
+          modified: 1758879265103
+          isPrivate: false
+          description: ""
+          sortKey: -1758697212084
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+                "displayName": "[as]-from-id-blueprint",
+                "agentAppId": "{{ _.agent_blueprint_appId }}"
+            }
+        headers:
+          - id: pair_9f93103608f44029899a041e7fe4ba7e
+            name: Content-Type
+            value: application/json
+        scripts:
+          afterResponse: >-
+            // update the environment variable with the newly created agent id
+
+            if(insomnia.response.code == 201){
+            	const jsonBody = insomnia.response.json();
+            	insomnia.environment.set("agent_identity_clientId", jsonBody.appId);
+            }
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+    authentication:
+      type: oauth2
+      grantType: client_credentials
+      accessTokenUrl: "{{ _.token_url }}"
+      clientId: "{{ _.agent_blueprint_appId }}"
+      clientSecret: "{{ _.agent_blueprint_clientSecret }}"
+      scope: https://graph.microsoft.com/.default
+    headers:
+      - id: pair_4c946ba249b0426bae10113e542204d5
+        name: OData-Version
+        value: "4.0"
+        description: ""
+        disabled: false
+  - name: 04 Authenticate Agent User (Digital Colleague)
+    meta:
+      id: fld_5d5846920eee4557ad26f4e0c89f8c21
+      created: 1758698319033
+      modified: 1758874337690
+      sortKey: -1758696883676.375
+      description: ""
+    children:
+      - url: "{{ _.token_url }}"
+        name: 04.03 Request Agent User token - using both fic tokens
+        meta:
+          id: req_18cd4b41d94d45f18011d7700d2d6456
+          created: 1758699396985
+          modified: 1758879595181
+          isPrivate: false
+          description: ""
+          sortKey: -1758699396985
+        method: POST
+        body:
+          mimeType: multipart/form-data
+          params:
+            - id: pair_e3a459f8064343cdaadf3b3c8b8af1d9
+              name: client_id
+              value: "{{ _.agent_identity_clientId }}"
+              description: ""
+              disabled: false
+            - id: pair_b1a20b80184a4959817f4042401752af
+              name: client_assertion_type
+              value: urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+              description: ""
+              disabled: false
+            - id: pair_e9962c36ce89441d917e124c789cae57
+              name: client_assertion
+              value: "{{ _.agent_blueprint_ficToken }}"
+              description: ""
+              disabled: false
+            - id: pair_66e1540037384c04a7646a904189961c
+              name: grant_type
+              value: user_fic
+              description: ""
+              disabled: false
+            - id: pair_75d0c187f4b949a19a5524d81ac7fb76
+              name: requested_token_use
+              value: on_behalf_of
+              description: ""
+              disabled: false
+            - id: pair_0d90a694f9cd4d61a94753880e330481
+              name: scope
+              value: https://graph.microsoft.com/.default
+              description: ""
+              disabled: false
+            - id: pair_66e015fea71943c5ad81e2bce996971d
+              name: username
+              value: "{{ _.agent_user_upn }}"
+              description: ""
+              disabled: false
+            - id: pair_35585c8dc59246418e48ecc1f5ebe1f8
+              name: user_federated_identity_credential
+              value: "{{ _.agent_identity_ficToken }}"
+              description: ""
+              disabled: false
+        headers:
+          - name: Content-Type
+            value: multipart/form-data
+          - name: User-Agent
+            value: insomnia/11.3.0
+        authentication:
+          type: none
+        scripts:
+          afterResponse: >-
+            if(insomnia.response.code == 200){
+            	const jsonBody = insomnia.response.json();
+            	insomnia.environment.set("agent_user_accessToken", jsonBody.access_token);
+            }
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.token_url }}"
+        name: 04.01 Request FIC token for Agent Blueprint
+        meta:
+          id: req_a815ad150dc74c788545d2d8b66e1d86
+          created: 1758699468829
+          modified: 1758879579947
+          isPrivate: false
+          description: ""
+          sortKey: -1758706659445
+        method: POST
+        body:
+          mimeType: multipart/form-data
+          params:
+            - id: pair_56242a7fb6d541b99f1fdc9140051be3
+              name: ""
+              value: ""
+              description: ""
+              disabled: false
+            - id: pair_bbe7edf5ca2245018ac3b748508a224e
+              name: scope
+              value: api://AzureADTokenExchange/.default
+              description: ""
+              disabled: false
+            - id: pair_13301549bdb94864ae95aa165f03b64e
+              name: grant_type
+              value: client_credentials
+              description: ""
+              disabled: false
+            - id: pair_a1f07c03d92d4048857296079001a32e
+              name: fmi_path
+              value: "{{ _.agent_identity_clientId }}"
+              description: ""
+              disabled: false
+        parameters:
+          - id: pair_384e80609052436a83e5c9fdc17ad7d0
+            name: ""
+            value: ""
+            description: ""
+            disabled: false
+        headers:
+          - name: Content-Type
+            value: multipart/form-data
+          - name: User-Agent
+            value: insomnia/11.3.0
+        authentication:
+          type: basic
+          useISO88591: false
+          disabled: false
+          username: "{{ _.agent_blueprint_appId }}"
+          password: "{{ _.agent_blueprint_clientSecret }}"
+        scripts:
+          afterResponse: >-
+            if(insomnia.response.code == 200){
+            	const jsonBody = insomnia.response.json();
+            	insomnia.environment.set("agent_blueprint_ficToken", jsonBody.access_token);
+            }
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.token_url }}"
+        name: 04.02 Request FIC token for Agent ID using the Blueprint FIC token
+        meta:
+          id: req_9734c90a3a964be69ed17d3c75224d42
+          created: 1758706659345
+          modified: 1758879589053
+          isPrivate: false
+          description: ""
+          sortKey: -1758706659345
+        method: POST
+        body:
+          mimeType: application/x-www-form-urlencoded
+          params:
+            - id: pair_6c164566078f48769ebb640f568f013e
+              name: client_id
+              value: "{{ _.agent_identity_clientId }}"
+              description: ""
+              disabled: false
+            - id: pair_38b9d973fed54d8c848e66f2ca8f89f8
+              name: scope
+              value: api://AzureADTokenExchange/.default
+              description: ""
+              disabled: false
+            - id: pair_4cbffc062a9a40198614fc8db379d230
+              name: grant_type
+              value: client_credentials
+              description: ""
+              disabled: false
+            - id: pair_1e88ef12e5314c40b3136bb7da5b47f6
+              name: client_assertion_type
+              value: urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+              description: ""
+              disabled: false
+            - id: pair_d2e0b261450548aaa51194fecb5cbfe7
+              name: client_assertion
+              value: "{{ _.agent_blueprint_ficToken }}"
+              description: ""
+              disabled: false
+        headers:
+          - name: Content-Type
+            value: application/x-www-form-urlencoded
+          - name: User-Agent
+            value: insomnia/11.3.0
+        authentication:
+          type: none
+        scripts:
+          afterResponse: >-
+            if(insomnia.response.code == 200){
+            	const jsonBody = insomnia.response.json();
+            	insomnia.environment.set("agent_identity_ficToken", jsonBody.access_token);
+            }
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: https://graph.microsoft.com/v1.0/me
+        name: 04.04 /me
+        meta:
+          id: req_ff57b609c1ce4e06be95967bfcea4c3c
+          created: 1758709001396
+          modified: 1758879600633
+          isPrivate: false
+          description: ""
+          sortKey: -1758699396935
+        method: GET
+        headers:
+          - id: pair_f64244e1bf4348988dba75fc3c78fe66
+            name: ""
+            value: ""
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _.agent_user_accessToken }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: https://graph.microsoft.com/v1.0/me/messages
+        name: 04.06 /me/messages
+        meta:
+          id: req_a5e3bc380c964a72b98462fd56d4055d
+          created: 1758874404132
+          modified: 1758879611543
+          isPrivate: false
+          description: ""
+          sortKey: -1758698304509.5
+        method: GET
+        headers:
+          - id: pair_f64244e1bf4348988dba75fc3c78fe66
+            name: ""
+            value: ""
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _.agent_user_accessToken }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: https://graph.microsoft.com/v1.0/me/getMemberGroups
+        name: 04.05 /me/getMemberGroups
+        meta:
+          id: req_df01b64121c949fba1d65391aba5d242
+          created: 1758874636388
+          modified: 1758879605851
+          isPrivate: false
+          description: ""
+          sortKey: -1758698850722.25
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+                "securityEnabledOnly": true
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - id: pair_f64244e1bf4348988dba75fc3c78fe66
+            name: ""
+            value: ""
+            description: ""
+            disabled: false
+        authentication:
+          type: bearer
+          token: "{{ _.agent_user_accessToken }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+    authentication:
+      type: none
+  - name: 03 Create Agentic User (Digital Colleague) (act with high privilege
+      credentials)
+    meta:
+      id: fld_f1e50f5c28854b9e9a47199fcfb5230c
+      created: 1758704566527
+      modified: 1758879379980
+      sortKey: -1758696883679.5
+      description: ""
+    children:
+      - url: https://graph.microsoft.com/beta/users
+        name: 03.01 Create Agentic User (Digital Colleague)
+        meta:
+          id: req_afb4dbce84084b8db585cd39655f4570
+          created: 1758703529130
+          modified: 1758815636557
+          isPrivate: false
+          description: ""
+          sortKey: -1758704647438
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"@odata.type":"microsoft.graph.agentUser",
+            	"displayName": "[as] Agent ID User",
+            	"userPrincipalName": "{{ _.agent_user_upn }}",
+            	"mailNickname": "{{ _.agent_user_mailNickName }}",
+            	"accountEnabled": true,
+            	"identityParentId":"{{ _.agent_identity_clientId }}"
+            }
+        headers:
+          - id: pair_fe2e38e72ce44325ab0a48d4ff34c688
+            name: Content-Type
+            value: application/json
+        scripts:
+          afterResponse: |-
+            // update the environment variable with the newly created agent id
+            if(insomnia.response.code == 201){
+            	const jsonBody = insomnia.response.json();
+            	insomnia.environment.set("agent_identity_userId", jsonBody.id);
+            }
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: https://graph.microsoft.com/beta/oauth2PermissionGrants
+        name: 03.02 Grant OAuth2 permissions to the Agentic User
+        meta:
+          id: req_89658ea4b50b4eac8ea4996a351faa7e
+          created: 1758704647338
+          modified: 1758873296151
+          isPrivate: false
+          description: ""
+          sortKey: -1758704647338
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"clientId": "{{ _.agent_identity_clientId }}",
+            	"consentType": "Principal",
+            	"principalId": "{{ _.agent_identity_userId }}",
+            	"resourceId": "{{ _.ms_graph_object_id }}",
+            	"scope":"User.Read groupmember.read.all mail.read",
+            	"startTime": "2025-09-24T00:00:00",
+            	"expiryTime":"2026-09-24T00:00:00"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+          - id: pair_64cdbd0501a54af3bab995890ea15207
+            name: ""
+            value: ""
+            description: ""
+            disabled: false
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+    authentication:
+      type: oauth2
+      grantType: client_credentials
+      accessTokenUrl: "{{ _.token_url }}"
+      clientId: "{{ _.client_id }}"
+      clientSecret: "{{ _.client_secret }}"
+      scope: https://graph.microsoft.com/.default
+  - name: 05 Authenticate Agent ID (Autonomous Agent)
+    meta:
+      id: fld_c9a3a584add54e8cb4af2a2687c807ce
+      created: 1758728361894
+      modified: 1758809356727
+      sortKey: -1758696883675.5938
+      description: ""
+    children:
+      - url: "{{ _.token_url }}"
+        name: 05.01 Request FIC token for Agent Blueprint
+        meta:
+          id: req_3925f2f0b2244e5a8ce33cb0bc7ae97e
+          created: 1758728393707
+          modified: 1758809006274
+          isPrivate: false
+          description: ""
+          sortKey: -1758728399599
+        method: POST
+        body:
+          mimeType: multipart/form-data
+          params:
+            - id: pair_bbe7edf5ca2245018ac3b748508a224e
+              name: scope
+              value: api://AzureADTokenExchange/.default
+              description: ""
+              disabled: false
+            - id: pair_13301549bdb94864ae95aa165f03b64e
+              name: grant_type
+              value: client_credentials
+              description: ""
+              disabled: false
+            - id: pair_a1f07c03d92d4048857296079001a32e
+              name: fmi_path
+              value: "{{ _.agent_identity_clientId }}"
+              description: ""
+              disabled: false
+        parameters:
+          - id: pair_384e80609052436a83e5c9fdc17ad7d0
+            name: ""
+            value: ""
+            description: ""
+            disabled: false
+        headers:
+          - name: Content-Type
+            value: multipart/form-data
+          - name: User-Agent
+            value: insomnia/11.3.0
+        authentication:
+          type: basic
+          useISO88591: false
+          disabled: false
+          username: "{{ _.agent_blueprint_appId }}"
+          password: "{{ _.agent_blueprint_clientSecret }}"
+        scripts:
+          afterResponse: >-
+            if(insomnia.response.code == 200){
+            	const jsonBody = insomnia.response.json();
+            	insomnia.environment.set("agent_blueprint_ficToken", jsonBody.access_token);
+            }
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.token_url }}"
+        name: 05.02 Request Agent ID token using the Blueprint FIC token
+        meta:
+          id: req_fee22c33fe0c4d9e96aae7a11eb10653
+          created: 1758728439797
+          modified: 1758809037861
+          isPrivate: false
+          description: ""
+          sortKey: -1758728399499
+        method: POST
+        body:
+          mimeType: application/x-www-form-urlencoded
+          params:
+            - id: pair_6c164566078f48769ebb640f568f013e
+              name: client_id
+              value: "{{ _.agent_identity_clientId }}"
+              description: ""
+              disabled: false
+            - id: pair_38b9d973fed54d8c848e66f2ca8f89f8
+              name: scope
+              value: https://graph.microsoft.com/.default
+              description: ""
+              disabled: false
+            - id: pair_4cbffc062a9a40198614fc8db379d230
+              name: grant_type
+              value: client_credentials
+              description: ""
+              disabled: false
+            - id: pair_1e88ef12e5314c40b3136bb7da5b47f6
+              name: client_assertion_type
+              value: urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+              description: ""
+              disabled: false
+            - id: pair_d2e0b261450548aaa51194fecb5cbfe7
+              name: client_assertion
+              value: "{{ _.agent_blueprint_ficToken }}"
+              description: ""
+              disabled: false
+        headers:
+          - name: Content-Type
+            value: application/x-www-form-urlencoded
+          - name: User-Agent
+            value: insomnia/11.3.0
+        authentication:
+          type: none
+        scripts:
+          afterResponse: >-
+            if(insomnia.response.code == 200){
+            	const jsonBody = insomnia.response.json();
+            	insomnia.environment.set("agent_identity_accessToken", jsonBody.access_token);
+            }
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: 06 Authenticate End-User (Interactive Agent)
+    meta:
+      id: fld_e39d0e469faf41bfb7e85c875fc5b956
+      created: 1758728612219
+      modified: 1758728635171
+      sortKey: -1758696883674.8125
+      description: ""
+    children:
+      - url: https://jwt.ms
+        name: 06.01 AuthZ Code request for end-user authentication
+        meta:
+          id: req_4c1ad0a080fe4e8fb6e9e21db7e5c943
+          created: 1758728680699
+          modified: 1758880129848
+          isPrivate: false
+          description: ""
+          sortKey: -1758728680699
+        method: GET
+        headers:
+          - name: User-Agent
+            value: insomnia/11.3.0
+        authentication:
+          type: oauth2
+          grantType: authorization_code
+          authorizationUrl: "{{ _.authorization_url }}"
+          accessTokenUrl: "{{ _.token_url }}"
+          clientId: "{{ _.ai_client_id }}"
+          clientSecret: "{{ _.ai_client_secret }}"
+          redirectUrl: https://jwt.ms
+          scope: "{{ _.scope }} offline_access"
+          state: rnd-547902
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+cookieJar:
+  name: Default Jar
+  meta:
+    id: jar_c3ba61e529b6d53b27b9ebd8156540180facb791
+    created: 1758052743243
+    modified: 1758880131902
+environments:
+  name: Base Environment
+  meta:
+    id: env_c3ba61e529b6d53b27b9ebd8156540180facb791
+    created: 1758052743230
+    modified: 1758880773280
+    isPrivate: false
+  data:
+    token_url: https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token
+    authorization_url: https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/authorize
+    ms_graph_object_id: <object_id of the MS Graph service principal of your tenant>
+    client_id: <management app client id>
+    client_secret: <management app client secret>
+    ai_client_id: <ai app client id>
+    ai_client_secret: <ai app client secret>
+    agent_user_upn: asAgentIdBPUser@YOUR-TENANT.onmicrosoft.com
+    agent_user_mailNickName: asAgentIdBPUser
+  subEnvironments:
+    - name: Agent Blueprint
+      meta:
+        id: env_b29de3af984046d6a3368833de0321ec
+        created: 1758790565776
+        modified: 1758880766303
+        isPrivate: true
+        sortKey: 1758695927662
+      data:
+        scope: api://{{_.agent_blueprint_appObjectId}}/access_agent
+        agent_blueprint_appObjectId: ""
+        agent_blueprint_appId: ""
+        agent_blueprint_clientSecret: ""
+        agent_blueprint_accessToken: ""
+        agent_blueprint_ficToken: ""
+        agent_identity_clientId: ""
+        agent_identity_userId: ""
+        agent_identity_ficToken: ""
+        agent_identity_accessToken: ""
+        agent_user_accessToken: ""
+      color: "#28e3f0"
