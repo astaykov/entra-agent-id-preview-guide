@@ -8,7 +8,7 @@
    * User.ReadWrite.All – to create the Agent User Id
    * OAuth2PermissionGrants.ReadWrite.All – to grant admin consent for the Agent User
  * AI application client – this will represent your AI application that you are developing
- * Optional – Insomnia, all requests are provided as Insomnia Collection and PowerShell (Microsoft Graph Beta PowerShell)
+ * Optional – Insomnia, all requests are provided as Insomnia Collection ((Insomnia5-AgentID.yaml)[./Insomnia5-AgentID.yaml]) and PowerShell ((AgentID-PowerShell.ps1)[./AgentID-PowerShell.ps1])
 
 ## Insomnia setup
 Import the provided Insomnia5-AgentID.yaml collection to Insomnia
