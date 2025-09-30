@@ -395,8 +395,8 @@ Open browser and navigate to:
 ```
 https://login.microsoftonline.com/<TENANT_ID>/oauth2/v2.0/authorize?client_id=<AI_APP_CLIENT_ID>&response_type=code&redirect_uri=https%3a%2f%2fjwt.ms&scope=api%3a%2f%2f<AGENT_ID_CLIENT_ID>%2faccess_agent+offline_access&state=rnd-463866&response_mode=query
 ```
-# Note: This is an OAuth2 authorization code flow that requires user interaction
-# The final request to https://jwt.ms is just to decode the JWT token
+ > **Note:** This is an OAuth2 authorization code flow that requires user interaction.  
+ > The final request to https://jwt.ms is just to decode the JWT token
 
 
 Here all the specific parameters for better readibility:
