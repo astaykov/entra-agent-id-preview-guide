@@ -3,14 +3,14 @@ name: Agent ID
 meta:
   id: wrk_9000d0a1b9074e128c76187bf0a5dd77
   created: 1758052743183
-  modified: 1758052743183
+  modified: 1759831383065
   description: ""
 collection:
   - name: 01 Create Agent Blueprint (high privilege credentials)
     meta:
       id: fld_7cb57690214744f7a81833536a0569a7
       created: 1758052755066
-      modified: 1758873648268
+      modified: 1760525265317
       sortKey: -1758696883717
       description: ""
     children:
@@ -19,7 +19,7 @@ collection:
         meta:
           id: req_4134e86ff9f34e29bfa0e9dbb6c0b5b0
           created: 1758789777124
-          modified: 1758873623369
+          modified: 1760524833327
           isPrivate: false
           description: ""
           sortKey: -1758696477678
@@ -29,20 +29,15 @@ collection:
           text: |-
             {
               "@odata.type": "Microsoft.Graph.AgentIdentityBlueprint",
-              "displayName": "[as]-agent-id-blueprint 20250926"
+              "displayName": "[AgentID] Digital Worker 01 Blueprint",
+            	"sponsors@odata.bind": [
+                "{{ _.agent_sponsor_URI }}"
+              ]
             }
         headers:
           - id: pair_389e76a2382a4e049d936f6c00ead7e6
             name: Content-Type
             value: application/json
-          - id: pair_ae9af4e18fac4aba988246a8871df044
-            name: User-Agent
-            value: insomnia/11.3.0
-          - description: ""
-            disabled: false
-            id: pair_5b7360927e60477d9548055857a1487e
-            name: OData-Version
-            value: "4.0"
         scripts:
           afterResponse: >-
             if(insomnia.response.code == 201){
@@ -63,7 +58,7 @@ collection:
         meta:
           id: req_2456360377eb44d089eeaf1066d6b810
           created: 1758790245262
-          modified: 1758813542719
+          modified: 1760521649121
           isPrivate: false
           description: ""
           sortKey: -1758656017480.5
@@ -78,14 +73,6 @@ collection:
           - id: pair_92cb9e86c94c47378da1fa057b80ae23
             name: Content-Type
             value: application/json
-          - id: pair_60c657ea20254c1698c1aa020eaf9e31
-            name: User-Agent
-            value: insomnia/11.3.0
-          - description: ""
-            disabled: false
-            id: pair_54eaa280150243b392c22bda40dbf533
-            name: OData-Version
-            value: "4.0"
         settings:
           renderRequestBody: true
           encodeUrl: true
@@ -100,7 +87,7 @@ collection:
         meta:
           id: req_944925cd9af94ccc807d123636603c74
           created: 1758793354278
-          modified: 1758805395365
+          modified: 1760521649121
           isPrivate: false
           description: ""
           sortKey: -1758656017280.5
@@ -124,10 +111,9 @@ collection:
               }
             }
         headers:
-          - name: Content-Type
+          - id: pair_a1d1cc96848348d4bdc0d722a1d0aa5e
+            name: Content-Type
             value: application/json
-          - name: User-Agent
-            value: insomnia/11.3.0
         scripts:
           afterResponse: >-
             if(insomnia.response.code < 210){
@@ -147,7 +133,7 @@ collection:
         meta:
           id: req_4cd0ebdbb59442a4afb598f4ea573330
           created: 1758793357298
-          modified: 1758805333325
+          modified: 1760521649121
           isPrivate: false
           description: ""
           sortKey: -1758656017380.5
@@ -162,10 +148,9 @@ collection:
               }
             }
         headers:
-          - name: Content-Type
+          - id: pair_1599a190747a42488c1f67d2b821b4b5
+            name: Content-Type
             value: application/json
-          - name: User-Agent
-            value: insomnia/11.3.0
         scripts:
           preRequest: ""
           afterResponse: >-
@@ -181,18 +166,122 @@ collection:
             send: true
             store: true
           rebuildPath: true
+      - url: https://graph.microsoft.com/beta/applications/{{
+          _.agent_blueprint_appObjectId }}
+        name: DELETE The blueprint
+        meta:
+          id: req_f7ff228a7ec047519defe948a499c764
+          created: 1759761683825
+          modified: 1760521649121
+          isPrivate: false
+          description: ""
+          sortKey: -1758656017180.5
+        method: DELETE
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: https://graph.microsoft.com/beta/applications/{{
+          _.agent_blueprint_appObjectId }}/federatedIdentityCredentials
+        name: 01.05 Add Managed Identity as FIC to the Blueprint
+        meta:
+          id: req_f2c1a315234c48a28b44c04831fb8f9e
+          created: 1759925654068
+          modified: 1760521649121
+          isPrivate: false
+          description: ""
+          sortKey: -1758656017330.5
+        method: POST
+        body:
+          mimeType: application/json
+          text: >-
+            {
+                "name": "mi-digitalworker",
+                "issuer": "https://login.microsoftonline.com/{{ _.tenant_id }}/v2.0",
+                "subject": "d6ccd0ef-951b-41c0-8766-3c898d787932",
+                "audiences": [
+                    "api://AzureADTokenExchange/"
+                ]
+            }
+        headers:
+          - id: pair_1599a190747a42488c1f67d2b821b4b5
+            name: Content-Type
+            value: application/json
+        scripts:
+          preRequest: ""
+          afterResponse: >-
+            if(insomnia.response.code == 200){
+            	const jsonBody = insomnia.response.json();
+            	insomnia.environment.set("agent_blueprint_clientSecret", jsonBody.secretText);
+            }
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: https://graph.microsoft.com/beta/applications/{{
+          _.agent_blueprint_appObjectId }}
+        name: 01.05 Add redirect URI for admin / user consent
+        meta:
+          id: req_ff996ca3850e480eb897e1ac9af96a26
+          created: 1760522690972
+          modified: 1760522749465
+          isPrivate: false
+          description: ""
+          sortKey: -1758656017230.5
+        method: PATCH
+        body:
+          mimeType: application/json
+          text: |-
+            {
+            	"web": {
+            			"redirectUris": [
+            				"https://jwt.ms/"
+            			]
+            		}
+            }
+        headers:
+          - id: pair_a1d1cc96848348d4bdc0d722a1d0aa5e
+            name: Content-Type
+            value: application/json
+        scripts:
+          afterResponse: >-
+            if(insomnia.response.code < 210){
+            	insomnia.environment.set("scope", "api://{{_.agent_blueprint_appObjectId}}/access_agent");
+            }
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
     authentication:
-      type: oauth2
-      grantType: client_credentials
-      clientSecret: "{{ _.client_secret }}"
-      clientId: "{{ _.client_id }}"
       accessTokenUrl: "{{ _.token_url }}"
+      clientId: "{{ _.client_id }}"
+      clientSecret: "{{ _.client_secret }}"
+      grantType: client_credentials
       scope: https://graph.microsoft.com/.default
+      type: oauth2
+    headers:
+      - description: ""
+        disabled: false
+        id: pair_d287c5a0be5745b68fa46651b629c17d
+        name: OData-Version
+        value: "4.0"
   - name: 02 Create Agent Id (using Agent Blueprint credentials)
     meta:
       id: fld_c911748cb89346e7b7e8e1ee9200828c
       created: 1758696883617
-      modified: 1758873707772
+      modified: 1760524952295
       sortKey: -1758696883692
       description: ""
     children:
@@ -201,7 +290,7 @@ collection:
         meta:
           id: req_7f0467a9eb5f46199b0f96019165759e
           created: 1758697212084
-          modified: 1758879265103
+          modified: 1760524942923
           isPrivate: false
           description: ""
           sortKey: -1758697212084
@@ -210,20 +299,22 @@ collection:
           mimeType: application/json
           text: |-
             {
-                "displayName": "[as]-from-id-blueprint",
-                "agentAppId": "{{ _.agent_blueprint_appId }}"
+                "displayName": "[AgentID] Digital Worker 01 Agent Identity",
+                "agentAppId": "{{ _.agent_blueprint_appId }}",
+            		"sponsors@odata.bind": [
+                	"{{ _.agent_sponsor_URI }}"
+              	]
             }
         headers:
           - id: pair_9f93103608f44029899a041e7fe4ba7e
             name: Content-Type
             value: application/json
         scripts:
-          afterResponse: >-
+          afterResponse: |-
             // update the environment variable with the newly created agent id
-
             if(insomnia.response.code == 201){
             	const jsonBody = insomnia.response.json();
-            	insomnia.environment.set("agent_identity_clientId", jsonBody.appId);
+            	insomnia.environment.set("agent_identity_clientId", jsonBody.id);
             }
         settings:
           renderRequestBody: true
@@ -250,16 +341,177 @@ collection:
     meta:
       id: fld_5d5846920eee4557ad26f4e0c89f8c21
       created: 1758698319033
-      modified: 1758874337690
+      modified: 1760525360224
       sortKey: -1758696883676.375
       description: ""
     children:
+      - name: M365 Demos
+        meta:
+          id: fld_3b023a53d895467d9e605480e61e8d47
+          created: 1759912734415
+          modified: 1760521649121
+          sortKey: -1758699396885
+          description: ""
+        children:
+          - url: https://graph.microsoft.com/v1.0/me
+            name: 04.04 /me
+            meta:
+              id: req_ff57b609c1ce4e06be95967bfcea4c3c
+              created: 1758709001396
+              modified: 1760521649121
+              isPrivate: false
+              description: ""
+              sortKey: -1759912740169
+            method: GET
+            headers:
+              - description: ""
+                disabled: false
+                id: pair_f64244e1bf4348988dba75fc3c78fe66
+                name: ""
+                value: ""
+            authentication:
+              token: "{{ _.agent_user_accessToken }}"
+              type: bearer
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+          - url: https://graph.microsoft.com/beta/me/messages/
+            name: 04.06 /me/messages
+            meta:
+              id: req_a5e3bc380c964a72b98462fd56d4055d
+              created: 1758874404132
+              modified: 1760521649121
+              isPrivate: false
+              description: ""
+              sortKey: -1759912740069
+            method: GET
+            headers:
+              - description: ""
+                disabled: false
+                id: pair_f64244e1bf4348988dba75fc3c78fe66
+                name: ""
+                value: ""
+            authentication:
+              token: "{{ _.agent_user_accessToken }}"
+              type: bearer
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+          - url: https://graph.microsoft.com/v1.0/me/getMemberGroups
+            name: 04.05 /me/getMemberGroups
+            meta:
+              id: req_df01b64121c949fba1d65391aba5d242
+              created: 1758874636388
+              modified: 1760521649121
+              isPrivate: false
+              description: ""
+              sortKey: -1759912740119
+            method: POST
+            body:
+              mimeType: application/json
+              text: |-
+                {
+                    "securityEnabledOnly": true
+                }
+            headers:
+              - name: Content-Type
+                value: application/json
+              - description: ""
+                disabled: false
+                id: pair_f64244e1bf4348988dba75fc3c78fe66
+                name: ""
+                value: ""
+            authentication:
+              token: "{{ _.agent_user_accessToken }}"
+              type: bearer
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+          - url: https://graph.microsoft.com/v1.0/me/chats?$expand=lastMessagePreview,members
+            name: 04.06 /me/chats
+            meta:
+              id: req_c01fc4f5c14b4a44989371afb97c3d63
+              created: 1759913131677
+              modified: 1760521649121
+              isPrivate: false
+              description: ""
+              sortKey: -1759320710384
+            method: GET
+            headers:
+              - description: ""
+                disabled: false
+                id: pair_f64244e1bf4348988dba75fc3c78fe66
+                name: ""
+                value: ""
+            authentication:
+              token: "{{ _.agent_user_accessToken }}"
+              type: bearer
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+          - url: https://graph.microsoft.com/v1.0/me/chats/19:3b120f57-3564-4d29-a3be-efbf5dcc7bcf_cedb507c-8efc-43d6-8eb6-ab22f0e972e0@unq.gbl.spaces/messages/
+            name: 04.08 /me/chats/{id}/messages
+            meta:
+              id: req_f373e7d4ec434c3e915b7816b6a427d5
+              created: 1759917092810
+              modified: 1760521649121
+              isPrivate: false
+              description: ""
+              sortKey: -1759024695541.5
+            method: POST
+            body:
+              mimeType: application/json
+              text: |-
+                {
+                  "body": {
+                    "content": "Hello World"
+                  }
+                }
+            headers:
+              - name: Content-Type
+                value: application/json
+              - description: ""
+                disabled: false
+                id: pair_f64244e1bf4348988dba75fc3c78fe66
+                name: ""
+                value: ""
+            authentication:
+              token: "{{ _.agent_user_accessToken }}"
+              type: bearer
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
       - url: "{{ _.token_url }}"
         name: 04.03 Request Agent User token - using both fic tokens
         meta:
           id: req_18cd4b41d94d45f18011d7700d2d6456
           created: 1758699396985
-          modified: 1758879595181
+          modified: 1760525358663
           isPrivate: false
           description: ""
           sortKey: -1758699396985
@@ -333,7 +585,7 @@ collection:
         meta:
           id: req_a815ad150dc74c788545d2d8b66e1d86
           created: 1758699468829
-          modified: 1758879579947
+          modified: 1759927416086
           isPrivate: false
           description: ""
           sortKey: -1758706659445
@@ -451,95 +703,6 @@ collection:
             send: true
             store: true
           rebuildPath: true
-      - url: https://graph.microsoft.com/v1.0/me
-        name: 04.04 /me
-        meta:
-          id: req_ff57b609c1ce4e06be95967bfcea4c3c
-          created: 1758709001396
-          modified: 1758879600633
-          isPrivate: false
-          description: ""
-          sortKey: -1758699396935
-        method: GET
-        headers:
-          - id: pair_f64244e1bf4348988dba75fc3c78fe66
-            name: ""
-            value: ""
-            description: ""
-            disabled: false
-        authentication:
-          type: bearer
-          token: "{{ _.agent_user_accessToken }}"
-        settings:
-          renderRequestBody: true
-          encodeUrl: true
-          followRedirects: global
-          cookies:
-            send: true
-            store: true
-          rebuildPath: true
-      - url: https://graph.microsoft.com/v1.0/me/messages
-        name: 04.06 /me/messages
-        meta:
-          id: req_a5e3bc380c964a72b98462fd56d4055d
-          created: 1758874404132
-          modified: 1758879611543
-          isPrivate: false
-          description: ""
-          sortKey: -1758698304509.5
-        method: GET
-        headers:
-          - id: pair_f64244e1bf4348988dba75fc3c78fe66
-            name: ""
-            value: ""
-            description: ""
-            disabled: false
-        authentication:
-          type: bearer
-          token: "{{ _.agent_user_accessToken }}"
-        settings:
-          renderRequestBody: true
-          encodeUrl: true
-          followRedirects: global
-          cookies:
-            send: true
-            store: true
-          rebuildPath: true
-      - url: https://graph.microsoft.com/v1.0/me/getMemberGroups
-        name: 04.05 /me/getMemberGroups
-        meta:
-          id: req_df01b64121c949fba1d65391aba5d242
-          created: 1758874636388
-          modified: 1758879605851
-          isPrivate: false
-          description: ""
-          sortKey: -1758698850722.25
-        method: POST
-        body:
-          mimeType: application/json
-          text: |-
-            {
-                "securityEnabledOnly": true
-            }
-        headers:
-          - name: Content-Type
-            value: application/json
-          - id: pair_f64244e1bf4348988dba75fc3c78fe66
-            name: ""
-            value: ""
-            description: ""
-            disabled: false
-        authentication:
-          type: bearer
-          token: "{{ _.agent_user_accessToken }}"
-        settings:
-          renderRequestBody: true
-          encodeUrl: true
-          followRedirects: global
-          cookies:
-            send: true
-            store: true
-          rebuildPath: true
     authentication:
       type: none
   - name: 03 Create Agentic User (Digital Colleague) (act with high privilege
@@ -547,7 +710,7 @@ collection:
     meta:
       id: fld_f1e50f5c28854b9e9a47199fcfb5230c
       created: 1758704566527
-      modified: 1758879379980
+      modified: 1760525036053
       sortKey: -1758696883679.5
       description: ""
     children:
@@ -556,7 +719,7 @@ collection:
         meta:
           id: req_afb4dbce84084b8db585cd39655f4570
           created: 1758703529130
-          modified: 1758815636557
+          modified: 1760524979832
           isPrivate: false
           description: ""
           sortKey: -1758704647438
@@ -566,7 +729,7 @@ collection:
           text: |-
             {
             	"@odata.type":"microsoft.graph.agentUser",
-            	"displayName": "[as] Agent ID User",
+            	"displayName": "[AgentID] Digital Worker 01 Agent User",
             	"userPrincipalName": "{{ _.agent_user_upn }}",
             	"mailNickname": "{{ _.agent_user_mailNickName }}",
             	"accountEnabled": true,
@@ -591,12 +754,12 @@ collection:
             send: true
             store: true
           rebuildPath: true
-      - url: https://graph.microsoft.com/beta/oauth2PermissionGrants
+      - url: https://graph.microsoft.com/v1.0/oauth2PermissionGrants
         name: 03.02 Grant OAuth2 permissions to the Agentic User
         meta:
           id: req_89658ea4b50b4eac8ea4996a351faa7e
           created: 1758704647338
-          modified: 1758873296151
+          modified: 1760525158110
           isPrivate: false
           description: ""
           sortKey: -1758704647338
@@ -613,6 +776,7 @@ collection:
             	"startTime": "2025-09-24T00:00:00",
             	"expiryTime":"2026-09-24T00:00:00"
             }
+            // https://login.microsoftonline.com/{{ _.tenant_id }}/v2.0/adminconsent?client_id={{ _.agent_identity_clientId }}&scope=User.Read+groupmember.read.all+Chat.ReadWrite+Calendars.ReadWrite+Mail.ReadWrite+Contacts.Read+People.Read&redirect_uri=https://entra.microsoft.com/TokenAuthorize&state=xyz123
         headers:
           - name: Content-Type
             value: application/json
@@ -630,17 +794,23 @@ collection:
             store: true
           rebuildPath: true
     authentication:
-      type: oauth2
-      grantType: client_credentials
       accessTokenUrl: "{{ _.token_url }}"
       clientId: "{{ _.client_id }}"
       clientSecret: "{{ _.client_secret }}"
+      grantType: client_credentials
       scope: https://graph.microsoft.com/.default
+      type: oauth2
+    headers:
+      - description: ""
+        disabled: false
+        id: pair_2a08ca72de4d452fbac15e058b8f3934
+        name: OData-Version
+        value: "4.0"
   - name: 05 Authenticate Agent ID (Autonomous Agent)
     meta:
       id: fld_c9a3a584add54e8cb4af2a2687c807ce
       created: 1758728361894
-      modified: 1758809356727
+      modified: 1760525231045
       sortKey: -1758696883675.5938
       description: ""
     children:
@@ -806,30 +976,32 @@ cookieJar:
   meta:
     id: jar_c3ba61e529b6d53b27b9ebd8156540180facb791
     created: 1758052743243
-    modified: 1758880131902
+    modified: 1760525360215
 environments:
   name: Base Environment
   meta:
     id: env_c3ba61e529b6d53b27b9ebd8156540180facb791
     created: 1758052743230
-    modified: 1758880773280
+    modified: 1760531958273
     isPrivate: false
   data:
-    token_url: https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token
-    authorization_url: https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/authorize
-    ms_graph_object_id: <object_id of the MS Graph service principal of your tenant>
-    client_id: <management app client id>
-    client_secret: <management app client secret>
-    ai_client_id: <ai app client id>
-    ai_client_secret: <ai app client secret>
-    agent_user_upn: asAgentIdBPUser@YOUR-TENANT.onmicrosoft.com
-    agent_user_mailNickName: asAgentIdBPUser
+    tenant_id: <your_tenant_id>
+    ms_graph_object_id: <ms graph service principal object id>
+    client_id: <high privilege app client_id>
+    client_secret: <high privilege app client secret>
+    ai_client_id: <ai enabled app client_id>
+    ai_client_secret: <ai enabled app client secret>
+    agent_sponsor_URI: https://graph.microsoft.com/v1.0/groups/<object_id>
+    token_url: https://login.microsoftonline.com/{{ _.tenant_id }}/oauth2/v2.0/token
+    authorization_url: https://login.microsoftonline.com/{{ _.tenant_id }}/oauth2/v2.0/authorize
+    agent_user_upn: aiDigitalWorker01@<your-tenant>.onmicrosoft.com
+    agent_user_mailNickName: aiDigitalWorker01
   subEnvironments:
     - name: Agent Blueprint
       meta:
         id: env_b29de3af984046d6a3368833de0321ec
         created: 1758790565776
-        modified: 1758880766303
+        modified: 1760531943414
         isPrivate: true
         sortKey: 1758695927662
       data:
@@ -839,9 +1011,9 @@ environments:
         agent_blueprint_clientSecret: ""
         agent_blueprint_accessToken: ""
         agent_blueprint_ficToken: ""
-        agent_identity_clientId: ""
         agent_identity_userId: ""
         agent_identity_ficToken: ""
         agent_identity_accessToken: ""
         agent_user_accessToken: ""
+        agent_identity_clientId: ""
       color: "#28e3f0"

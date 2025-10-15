@@ -17,13 +17,14 @@
 # Environment Variables - Update these with your tenant-specific values
 $script:TenantId = "<YOUR-TENANT-ID>"
 $script:MSGraphObjectId = "<OBJECT ID OF Microsoft Graph in your tenant>"
+$script:SponsorGroupObjectId = "<OBJECT ID OF a security group for sponsoring the blueprint>"
 $script:ClientId = "<your management app registration client_id (application id) >"
 $script:ClientSecret = "<your management app registration client secret>"
 $script:AIClientId = "<your ai app registration client id (appliction id)>"
 $script:AIClientSecret = "<your ai app registration client secret>"
 # Note: Adjust these names in accordance to your tenant 
-$script:AgentUserUPN = "asAgentIdBPUserG@YOUR-TENANT.onmicrosoft.com"
-$script:AgentUserMailNickName = "asAgentIdBPUserG"
+$script:AgentUserUPN = "aiAgentIdBPUserG@YOUR-TENANT.onmicrosoft.com"
+$script:AgentUserMailNickName = "aiAgentIdBPUserG"
 
 # Dynamic variables populated during execution
 $script:AgentBlueprintAppId = $null
@@ -112,9 +113,10 @@ function New-AgentBlueprint {
         
         # Use New-MgApplication for creating the Agent Identity Blueprint
         $blueprintParams = @{
-            DisplayName = "[ast] agent-id-blueprint $(Get-Date -Format 'yyyyMMdd')"
+            DisplayName = "[ai] Agent Blueprint $(Get-Date -Format 'yyyyMMdd')"
             AdditionalProperties = @{
                 "@odata.type" = "Microsoft.Graph.AgentIdentityBlueprint"
+                "sponsors@odata.bind" = "['https://graph.microsoft.com/v1.0/groups/$($script:SponsorGroupObjectId)']"
             }
         }
         
@@ -267,7 +269,7 @@ function New-AgenticUser {
         
         # Use New-MgUser for creating the Agent User
         $userParams = @{
-            DisplayName = "[ast] Agent ID User"
+            DisplayName = "[ai] Digital Colleague User"
             UserPrincipalName = $script:AgentUserUPN
             MailNickname = $script:AgentUserMailNickName
             AccountEnabled = $true
@@ -283,19 +285,19 @@ function New-AgenticUser {
         Write-Host "Created Agentic User with UserId: $($script:AgentIdentityUserId)"
         
         # 03.02 Grant OAuth2 permissions to the Agentic User
-        Write-Host "Granting OAuth2 permissions to the Agentic User..."
+        # Write-Host "Granting OAuth2 permissions to the Agentic User..."
         
-        $permissionParams = @{
-            ClientId = $script:AgentIdentityClientId
-            ConsentType = "Principal"
-            PrincipalId = $script:AgentIdentityUserId
-            ResourceId = $script:MSGraphObjectId
-            Scope = "User.Read groupmember.read.all mail.read"
-            StartTime = [DateTime]::Parse("2025-09-24T00:00:00")
-            ExpiryTime = [DateTime]::Parse("2026-09-24T00:00:00")
-        }
+        # $permissionParams = @{
+        #     ClientId = $script:AgentIdentityClientId
+        #     ConsentType = "Principal"
+        #     PrincipalId = $script:AgentIdentityUserId
+        #     ResourceId = $script:MSGraphObjectId
+        #     Scope = "User.Read groupmember.read.all mail.read"
+        #     StartTime = [DateTime]::Parse("2025-09-24T00:00:00")
+        #     ExpiryTime = [DateTime]::Parse("2026-09-24T00:00:00")
+        # }
         
-        $permissionGrant = New-MgBetaOauth2PermissionGrant @permissionParams
+        # $permissionGrant = New-MgBetaOauth2PermissionGrant @permissionParams
         
         Write-Host "Agentic User created and permissions granted successfully!" -ForegroundColor Green
         Write-Host "Now waiting 15 seconds for permissions to propagate ..." -ForegroundColor Green

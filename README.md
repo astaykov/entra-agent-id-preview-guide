@@ -6,15 +6,14 @@
    * AgentApplication.Create – to create Agent Blueprint
    * Application.ReadWrite.OwnedBy – to create client secret for the blueprint and to „expose an API“ for the blueprint
    * User.ReadWrite.All – to create the Agent User Id
-   * OAuth2PermissionGrants.ReadWrite.All – to grant admin consent for the Agent User
+   * Global Admin – to grant admin consent for the Agent Identity to be able to act as the Agent User
  * AI application client – this will represent your AI application that you are developing
  * Optional – Insomnia, all requests are provided as [Insomnia](https://insomnia.rest/) Collection ([Insomnia5-AgentID.yaml](./Insomnia5-AgentID.yaml)) and PowerShell ([AgentID-PowerShell.ps1](./AgentID-PowerShell.ps1))
 
  > **Note on the permissions**
  > - `Application.ReadWrite.OwnedBy` permission is only requirement for scripting in this guide to work. The script exposes an API on the Agent Blueprint - section 01.03, and adds client credential - section 01.04.
   > - `User.ReadWrite.All` permission is a temporary requirement during preview. This is required to create the `Agentic User` (Digital Colleague), which is a `User` object with some special properties.
- > - `OAuth2PermissionGrants.ReadWrite.All` permission is a temporary requirement during preview. This is required for the script to grant admin consent for the digital colleague (Agentic User) to access data. Check section (4) for more details.
-
+ 
 ## Insomnia setup
 Import the provided Insomnia5-AgentID.yaml collection to [Insomnia](https://insomnia.rest/) and open the Agent ID collection.
 
@@ -22,12 +21,13 @@ Import the provided Insomnia5-AgentID.yaml collection to [Insomnia](https://inso
  `token_url`: "https://login.microsoftonline.com/YOUR-TENANT-ID/oauth2/v2.0/token",  
  `authorization_url`: "https://login.microsoftonline.com/YOUR-TENANT-ID/oauth2/v2.0/authorize",  
  `ms_graph_object_id`: "find the object ID for MS Graph in your tenant",  
+ `agent_sponsor_URI`: "https://graph.microsoft.com/v1.0/groups/object-id-of-security-group-for-sponsor",  
  `client_id` "the client id for your management app with granted application permissions",  
  `client_secret`: "client secret for the management app",  
  `ai_client_id`: "client id for app registration representing the AI app you are developing",  
  `ai_client_secret`: "client secret for the AI app"  
- `agent_user_upn`: "agenticDigitalColleague@yourtenant.onmicrosoft.com",  
- `agent_user_mailNickName`: "agenticDigitalColleague"  
+ `agent_user_upn`: "aiDigitalWorker01@yourtenant.onmicrosoft.com",  
+ `agent_user_mailNickName`: "aiDigitalWorker01"  
 
 The Agent ID environment variables will be populated automatically.
 
@@ -47,7 +47,10 @@ curl -X POST "https://graph.microsoft.com/beta/applications/" \
   -H "Authorization: Bearer {{ ACCESS_TOKEN_FROM_OAUTH2_CLIENT_CREDENTIALS }}" \
   -d '{
     "@odata.type": "Microsoft.Graph.AgentIdentityBlueprint",
-    "displayName": "[as]-agent-id-blueprint 20250926"
+    "displayName": "[ai] Blueprint for Digital Worker 01",
+	  "sponsors@odata.bind": [
+      "{{ _.agent_sponsor_URI }}"
+    ]
   }'
 ```
 
@@ -88,7 +91,7 @@ Sample response:
 	"id": "b7d1b414-b5fc-4ce8-ad68-8113678d0d31",
 	"accountEnabled": true,
 	"createdByAppId": "c7070528-2e77-48fb-bad8-2644cd74a151",
-	"appDisplayName": "[as]-agent-identity-blueprint",
+	"appDisplayName": "[ai] Blueprint for Digital Worker 01",
 	"appId": "fe2433e7-1fd8-4d26-a4e4-6dfb62aa41b2",
 	"appOwnerOrganizationId": "8e9ff323-8255-4620-8bc3-06637b146e51",
 	"appRoleAssignmentRequired": false,
@@ -173,8 +176,11 @@ curl -X POST "https://graph.microsoft.com/beta/serviceprincipals/Microsoft.Graph
   -H "OData-Version: 4.0" \
   -H "Authorization: Bearer {{ ACCESS_TOKEN_FROM_AGENT_BLUEPRINT_OAUTH2 }}" \
   -d '{
-    "displayName": "[as] from-id-blueprint",
-    "agentAppId": "{{ _.agent_blueprint_appId }}"
+    "displayName": "[ai] Agent Identity for Digital Worker 01",
+    "agentAppId": "{{ _.agent_blueprint_appId }}",
+	  "sponsors@odata.bind": [
+      "{{ _.agent_sponsor_URI }}"
+    ]
   }
 ```
 Sample response
@@ -186,9 +192,9 @@ Sample response
   "alternativeNames": [],
   "createdByAppId": "5d674406-dba3-4dee-afbd-de1887403dff",
   "appId": "c81ab79b-fe7f-4e19-b1a3-b527f48622f4",
-"appOwnerOrganizationId": null,
+  "appOwnerOrganizationId": null,
   "appRoleAssignmentRequired": false,
-"displayName": "[as] from-id-blueprint",
+  "displayName": "[ai] Agent Identity for Digital Worker 01",
   "agentAppId": "5d674406-dba3-4dee-afbd-de1887403dff",
   ...
 }
@@ -210,7 +216,7 @@ curl -X POST "https://graph.microsoft.com/beta/users" \
   -H "Authorization: Bearer {{ ACCESS_TOKEN_FROM_OAUTH2_CLIENT_CREDENTIALS }}" \
   -d '{
     "@odata.type":"microsoft.graph.agentUser",
-    "displayName": "[as] Agent ID User",
+    "displayName": "[ai] Digital Worker 01 Agent User",
     "userPrincipalName": "{{ _.agent_user_upn }}",
     "mailNickname": "{{ _.agent_user_mailNickName }}",
     "accountEnabled": true,
@@ -226,8 +232,8 @@ Sample repsonse
  "id": "4274f09f-b3ea-4005-b377-e0ec77736a4f",
  "deletedDateTime": null,
  "accountEnabled": true,
- "displayName": "[as] Agent ID User",
- "mailNickname": "asAgentIdBPUser",
+ "displayName": "[ai] Digital Worker 01 Agent User",
+ "mailNickname": "aiDigitalWorker01",
  "userType": "Member",
  "identityParentId": "c81ab79b-fe7f-4e19-b1a3-b527f48622f4",
  "identityParent": {
@@ -240,36 +246,20 @@ Sample repsonse
 
 ### 03.02. Grant (consent) permissions for the Agentic User
 
-Following the principle of least privilege, an Agentic User does not have any permissions to any resources by default. For this identity to access any information, a consent must be explicitly granted. In this example we will grant permissions to be able to sign-in and read its own user data, read e-mails and read its own group memberships.
+Following the principle of least privilege, an Agentic User does not have any permissions to any resources by default. For this identity to access any information, a consent must be explicitly granted. You will need to use the Microsoft Entra Admin Consent web flow to grant delegated permissions on the Agent Identity (created in step 02.01.).
 
 ```
-curl -X POST "https://graph.microsoft.com/beta/oauth2PermissionGrants" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer {{ ACCESS_TOKEN_FROM_OAUTH2_CLIENT_CREDENTIALS }}" \
-  -d '{
-    "clientId": "{{ _.agent_identity_clientId }}",
-    "consentType": "Principal",
-    "principalId": "{{ _.agent_identity_userId }}",
-    "resourceId": "{{ _.ms_graph_object_id }}",
-    "scope":"User.Read groupmember.read.all mail.read",
-    "startTime": "2025-09-24T00:00:00",
-    "expiryTime":"2026-09-24T00:00:00"
-  }'
+https://login.microsoftonline.com/{{ _.tenant_id }}/v2.0/adminconsent?client_id={{ _.agent_identity_clientId }}&scope=User.Read+groupmember.read.all+Chat.ReadWrite+Calendars.ReadWrite+Mail.ReadWrite+Contacts.Read+People.Read&redirect_uri=https://entra.microsoft.com/TokenAuthorize&state=xyz123
 ``` 
 
-Sample response
-```JSON
-{
- "@odata.context": „..#oauth2PermissionGrants/$entity",
- "clientId": "c81ab79b-fe7f-4e19-b1a3-b527f48622f4",
- "consentType": "Principal",
- "expiryTime": "2026-09-24T00:00:00Z",
- "id": "m7cayH_xxxxx",
- "principalId": "4274f09f-b3ea-4005-b377-e0ec77736a4f",
- "resourceId": "1a8127b0-1874-4400-9468-5ca9c9f4f0eb",
- "scope": "User.Read groupmember.read.all mail.read",
- "startTime": "2025-09-24T00:00:00Z"
-}
+For readibility, here are the parameters used:
+
+```
+ Admin consent URL: https://login.microsoftonline.com/{{ _.tenant_id }}/v2.0/adminconsent
+ client_id -> the client id (object_id = client_id) of the Agent Identity (Step 02.01.)
+ scope -> the scopes you want to grant for the Agent User to be able to access data
+ redirect_uri -> https://entra.microsoft.com/TokenAuthorize (standard URL so that you do not need to register reply_url of the Agent Identity)
+ state -> any random string for state
 ```
 
 ## 04 Authenticate the Agentic User (Digital Colleague)
