@@ -15,16 +15,16 @@
 #>
 
 # Environment Variables - Update these with your tenant-specific values
-$script:TenantId = "<YOUR-TENANT-ID>"
-$script:MSGraphObjectId = "<OBJECT ID OF Microsoft Graph in your tenant>"
-$script:SponsorGroupObjectId = "<OBJECT ID OF a security group for sponsoring the blueprint>"
-$script:ClientId = "<your management app registration client_id (application id) >"
-$script:ClientSecret = "<your management app registration client secret>"
+$script:TenantId = "<TENANT-ID>"
+$script:MSGraphObjectId = "<MSGRAPH-APP-OBJECT-ID>"
+$script:SponsorGroupObjectId = "<SPONSOR-GROUP-OBJECT-ID>"
+$script:ClientId = "<your high privilege app registration client id (application id)>"
+$script:ClientSecret = "<>your high privilege app registration client secret>"
 $script:AIClientId = "<your ai app registration client id (appliction id)>"
 $script:AIClientSecret = "<your ai app registration client secret>"
 # Note: Adjust these names in accordance to your tenant 
-$script:AgentUserUPN = "aiAgentIdBPUserG@YOUR-TENANT.onmicrosoft.com"
-$script:AgentUserMailNickName = "aiAgentIdBPUserG"
+$script:AgentUserUPN = "ai.cohort.user01@yourtenant.onmicrosoft.com"
+$script:AgentUserMailNickName = "ai.cohort.user01"
 
 # Dynamic variables populated during execution
 $script:AgentBlueprintAppId = $null
@@ -113,10 +113,10 @@ function New-AgentBlueprint {
         
         # Use New-MgApplication for creating the Agent Identity Blueprint
         $blueprintParams = @{
-            DisplayName = "[ai] Agent Blueprint $(Get-Date -Format 'yyyyMMdd')"
+            DisplayName = "[ai] Cohort Blueprint $(Get-Date -Format 'yyyyMMdd')"
             AdditionalProperties = @{
                 "@odata.type" = "Microsoft.Graph.AgentIdentityBlueprint"
-                "sponsors@odata.bind" = "['https://graph.microsoft.com/v1.0/groups/$($script:SponsorGroupObjectId)']"
+                "sponsors@odata.bind" = @("https://graph.microsoft.com/v1.0/groups/$($script:SponsorGroupObjectId)")
             }
         }
         
@@ -180,6 +180,17 @@ function New-AgentBlueprint {
         Update-MgBetaApplication @apiParams
         $script:Scope = "api://$($script:AgentBlueprintAppId)/access_agent"
         
+        
+        $redirectUriParams = @{
+            ApplicationId = $script:AgentBlueprintAppObjectId
+            web = @{
+                redirectUris = @(
+                    "https://jwt.ms/"
+                )
+            }
+        }
+        Update-MgBetaApplication @redirectUriParams
+
         Write-Host "Agent Blueprint created successfully!" -ForegroundColor Green
         return @{
             AppId = $script:AgentBlueprintAppId
@@ -224,10 +235,11 @@ function New-AgentIdentity {
         $agentBody = @{
             displayName = "[ast]-from-id-blueprint"
             agentAppId  = $script:AgentBlueprintAppId
+            "sponsors@odata.bind" = @("https://graph.microsoft.com/v1.0/groups/$($script:SponsorGroupObjectId)")
         }
         
-        $agentIdentity = Invoke-MgRestMethod -Uri "/beta/serviceprincipals/Microsoft.Graph.AgentIdentity" -Method POST -Body ($agentBody | ConvertTo-Json) -ContentType "application/json"
-        $script:AgentIdentityClientId = $agentIdentity.appId
+        $agentIdentity = Invoke-MgRestMethod -Uri "/beta/serviceprincipals/Microsoft.Graph.AgentIdentity" -Method POST -Body ($agentBody | ConvertTo-Json) -ContentType "application/json" -Headers $customHeaders
+        $script:AgentIdentityClientId = $agentIdentity.id
         
         Write-Host "Created Agent Identity with ClientId: $($script:AgentIdentityClientId)" -ForegroundColor Green
         Write-Host "Now waiting 15 seconds to make sure changes propagate ..." -ForegroundColor Green
@@ -269,7 +281,7 @@ function New-AgenticUser {
         
         # Use New-MgUser for creating the Agent User
         $userParams = @{
-            DisplayName = "[ai] Digital Colleague User"
+            DisplayName = "[ai] Cohort DW User"
             UserPrincipalName = $script:AgentUserUPN
             MailNickname = $script:AgentUserMailNickName
             AccountEnabled = $true
@@ -287,17 +299,17 @@ function New-AgenticUser {
         # 03.02 Grant OAuth2 permissions to the Agentic User
         # Write-Host "Granting OAuth2 permissions to the Agentic User..."
         
-        # $permissionParams = @{
-        #     ClientId = $script:AgentIdentityClientId
-        #     ConsentType = "Principal"
-        #     PrincipalId = $script:AgentIdentityUserId
-        #     ResourceId = $script:MSGraphObjectId
-        #     Scope = "User.Read groupmember.read.all mail.read"
-        #     StartTime = [DateTime]::Parse("2025-09-24T00:00:00")
-        #     ExpiryTime = [DateTime]::Parse("2026-09-24T00:00:00")
-        # }
+        $permissionParams = @{
+            ClientId = $script:AgentIdentityClientId
+            ConsentType = "Principal"
+            PrincipalId = $script:AgentIdentityUserId
+            ResourceId = $script:MSGraphObjectId
+            Scope = "User.Read GroupMember.Read.All Chat.ReadWrite Calendars.ReadWrite Mail.ReadWrite Mail.Send Contacts.Read People.Read"
+            StartTime = [DateTime]::Parse("2025-09-24T00:00:00")
+            ExpiryTime = [DateTime]::Parse("2026-09-24T00:00:00")
+        }
         
-        # $permissionGrant = New-MgBetaOauth2PermissionGrant @permissionParams
+        $permissionGrant = New-MgBetaOauth2PermissionGrant @permissionParams
         
         Write-Host "Agentic User created and permissions granted successfully!" -ForegroundColor Green
         Write-Host "Now waiting 15 seconds for permissions to propagate ..." -ForegroundColor Green
@@ -571,11 +583,11 @@ function Complete-AgentSetup {
         $identity = New-AgentIdentity
         Write-Host "✓ Agent Identity created" -ForegroundColor Green
         
-        # Step 3: Create Agentic User
+        # # Step 3: Create Agentic User
         $user = New-AgenticUser
         Write-Host "✓ Agentic User created" -ForegroundColor Green
         
-        # Step 4: Authenticate Agent User
+        # # Step 4: Authenticate Agent User
         $userAuth = Connect-AgentUser
         Write-Host "✓ Agent User authenticated" -ForegroundColor Green
         
@@ -583,11 +595,11 @@ function Complete-AgentSetup {
         $agentAuth = Connect-AgentID
         Write-Host "✓ Agent ID authenticated" -ForegroundColor Green
         
-        # Step 6: Setup End-User Authentication (optional)
-        if (-not $SkipEndUserAuth) {
-            $endUserAuth = Start-EndUserAuthentication
-            Write-Host "✓ End-User authentication initiated" -ForegroundColor Green
-        }
+        # # Step 6: Setup End-User Authentication (optional)
+        # if (-not $SkipEndUserAuth) {
+        #     $endUserAuth = Start-EndUserAuthentication
+        #     Write-Host "✓ End-User authentication initiated" -ForegroundColor Green
+        # }
         
         Write-Host ""
         Write-Host "Agent ID setup completed successfully!" -ForegroundColor Magenta
