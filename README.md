@@ -6,7 +6,7 @@
    * AgentApplication.Create – to create Agent Blueprint
    * Application.ReadWrite.OwnedBy – to create client secret for the blueprint and to „expose an API“ for the blueprint
    * User.ReadWrite.All – to create the Agent User Id
-   * Global Admin – to grant admin consent for the Agent Identity to be able to act as the Agent User
+   * DelegatedPermissionGrant.ReadWrite.All – to grant admin consent for the Agent Identity to be able to act as the Agent User
  * AI application client – this will represent your AI application that you are developing
  * Optional – Insomnia, all requests are provided as [Insomnia](https://insomnia.rest/) Collection ([Insomnia5-AgentID.yaml](./Insomnia5-AgentID.yaml)) and PowerShell ([AgentID-PowerShell.ps1](./AgentID-PowerShell.ps1))
 

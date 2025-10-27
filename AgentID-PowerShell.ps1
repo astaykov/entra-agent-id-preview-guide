@@ -15,15 +15,15 @@
 #>
 
 # Environment Variables - Update these with your tenant-specific values
-$script:TenantId = "<TENANT-ID>"
-$script:MSGraphObjectId = "<MSGRAPH-APP-OBJECT-ID>"
-$script:SponsorGroupObjectId = "<SPONSOR-GROUP-OBJECT-ID>"
-$script:ClientId = "<your high privilege app registration client id (application id)>"
-$script:ClientSecret = "<>your high privilege app registration client secret>"
+$script:TenantId = "f996f1ff-9455-4021-9ddd-1f0a20b82fe6"
+$script:MSGraphObjectId = "2f5da732-9f8c-4fc8-af76-64fe375fb354"
+$script:SponsorGroupObjectId = "1efc3f40-f6f9-44fd-ba31-2857caa34e23"
+$script:ClientId = "d3610646-b9ca-470b-9297-49675ee2ff9f"
+$script:ClientSecret = "fUC8Q~XX6_oSr1jB6ijcvOlPeNZByocvBZZj7c9Z"
 $script:AIClientId = "<your ai app registration client id (appliction id)>"
 $script:AIClientSecret = "<your ai app registration client secret>"
 # Note: Adjust these names in accordance to your tenant 
-$script:AgentUserUPN = "ai.cohort.user01@yourtenant.onmicrosoft.com"
+$script:AgentUserUPN = "ai.cohort.user01@idhero.de"
 $script:AgentUserMailNickName = "ai.cohort.user01"
 
 # Dynamic variables populated during execution
@@ -234,7 +234,7 @@ function New-AgentIdentity {
         # Use Invoke-MgRestMethod with relative path for better SDK integration
         $agentBody = @{
             displayName = "[ast]-from-id-blueprint"
-            agentAppId  = $script:AgentBlueprintAppId
+            agentIdentityBlueprintId  = $script:AgentBlueprintAppId
             "sponsors@odata.bind" = @("https://graph.microsoft.com/v1.0/groups/$($script:SponsorGroupObjectId)")
         }
         
