@@ -1,0 +1,309 @@
+# Agent ID - Insomnia Collection Converted to CURL
+
+This file contains all the HTTP requests from the Insomnia collection converted to CURL format.
+Variables are kept as placeholders (e.g., {{ _.variable_name }}) and should be replaced with actual values.
+
+----
+
+
+# 01.01 Create Agent Id Blueprint
+
+curl -X POST "https://graph.microsoft.com/beta/applications/" \
+  -H "Content-Type: application/json" \
+  -H "OData-Version: 4.0" \
+  -H "Authorization: Bearer {{ ACCESS_TOKEN_FROM_OAUTH2_CLIENT_CREDENTIALS }}" \
+  -d '{
+    "@odata.type": "Microsoft.Graph.AgentIdentityBlueprint",
+    "displayName": "[as]-agent-id-blueprint 20250926"
+  }'
+
+# Note: Uses OAuth2 client credentials flow with:
+# - Client ID: {{ _.client_id }}
+# - Client Secret: {{ _.client_secret }}
+# - Token URL: {{ _.token_url }}
+# - Scope: https://graph.microsoft.com/.default
+
+
+----
+
+
+# 01.02 Create Agent Id Blueprint Service Principal
+
+curl -X POST "https://graph.microsoft.com/beta/serviceprincipals/graph.agentIdentityBlueprintPrincipal" \
+  -H "Content-Type: application/json" \
+  -H "OData-Version: 4.0" \
+  -H "Authorization: Bearer {{ ACCESS_TOKEN_FROM_OAUTH2_CLIENT_CREDENTIALS }}" \
+  -d '{
+    "appId": "{{ _.agent_blueprint_appId }}"
+  }'
+
+# Note: Uses OAuth2 client credentials flow with:
+# - Client ID: {{ _.client_id }}
+# - Client Secret: {{ _.client_secret }}
+# - Token URL: {{ _.token_url }}
+# - Scope: https://graph.microsoft.com/.default
+
+
+----
+
+
+# 01.04 Expose an API for the blueprint
+
+curl -X PATCH "https://graph.microsoft.com/beta/applications/{{ _.agent_blueprint_appObjectId }}" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {{ ACCESS_TOKEN_FROM_OAUTH2_CLIENT_CREDENTIALS }}" \
+  -d '{
+    "identifierUris": ["api://{{ _.agent_blueprint_appId }}"],
+    "api": {
+      "oauth2PermissionScopes": [
+        {
+          "adminConsentDescription": "Allow the application to access the agent on behalf of the signed-in user.",
+          "adminConsentDisplayName": "Access agent",
+          "id": "{{ GENERATED_GUID }}",
+          "isEnabled": true,
+          "type": "User",
+          "value": "access_agent"
+        }
+      ]
+    }
+  }'
+
+# Note: Uses OAuth2 client credentials flow with:
+# - Client ID: {{ _.client_id }}
+# - Client Secret: {{ _.client_secret }}
+# - Token URL: {{ _.token_url }}
+# - Scope: https://graph.microsoft.com/.default
+
+
+----
+
+
+# 01.03 Add client secret to the Agent App Reg
+
+curl -X POST "https://graph.microsoft.com/beta/applications/{{ _.agent_blueprint_appObjectId }}/addPassword" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {{ ACCESS_TOKEN_FROM_OAUTH2_CLIENT_CREDENTIALS }}" \
+  -d '{
+    "passwordCredential": {
+      "displayName": "Dummy Secret",
+      "endDateTime": "2026-08-05T23:59:59Z"
+    }
+  }'
+
+# Note: Uses OAuth2 client credentials flow with:
+# - Client ID: {{ _.client_id }}
+# - Client Secret: {{ _.client_secret }}
+# - Token URL: {{ _.token_url }}
+# - Scope: https://graph.microsoft.com/.default
+
+
+----
+
+
+# 02.01 Create Agent Identity
+
+curl -X POST "https://graph.microsoft.com/beta/serviceprincipals/Microsoft.Graph.AgentIdentity" \
+  -H "Content-Type: application/json" \
+  -H "OData-Version: 4.0" \
+  -H "Authorization: Bearer {{ ACCESS_TOKEN_FROM_AGENT_BLUEPRINT_OAUTH2 }}" \
+  -d '{
+    "displayName": "[as]-from-id-blueprint",
+    "agentAppId": "{{ _.agent_blueprint_appId }}"
+  }'
+
+# Note: Uses OAuth2 client credentials flow with:
+# - Client ID: {{ _.agent_blueprint_appId }}
+# - Client Secret: {{ _.agent_blueprint_clientSecret }}
+# - Token URL: {{ _.token_url }}
+# - Scope: https://graph.microsoft.com/.default
+
+
+----
+
+
+# 04.03 Request Agent User token - using both fic tokens
+
+curl -X POST "{{ _.token_url }}" \
+  -H "Content-Type: multipart/form-data" \
+  -F "client_id={{ _.agent_identity_clientId }}" \
+  -F "client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer" \
+  -F "client_assertion={{ _.agent_blueprint_ficToken }}" \
+  -F "grant_type=user_fic" \
+  -F "requested_token_use=on_behalf_of" \
+  -F "scope=https://graph.microsoft.com/.default" \
+  -F "username={{ _.agent_user_upn }}" \
+  -F "user_federated_identity_credential={{ _.agent_identity_ficToken }}"
+
+
+----
+
+
+# 04.01 Request FIC token for Agent Blueprint
+
+curl -X POST "{{ _.token_url }}" \
+  -H "Content-Type: multipart/form-data" \
+  -u "{{ _.agent_blueprint_appId }}:{{ _.agent_blueprint_clientSecret }}" \
+  -F "scope=api://AzureADTokenExchange/.default" \
+  -F "grant_type=client_credentials" \
+  -F "fmi_path={{ _.agent_identity_clientId }}"
+
+
+----
+
+
+# 04.02 Request FIC token for Agent ID using the Blueprint FIC token
+
+curl -X POST "{{ _.token_url }}" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "client_id={{ _.agent_identity_clientId }}&scope=api://AzureADTokenExchange/.default&grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion={{ _.agent_blueprint_ficToken }}"
+
+
+----
+
+
+# 04.04 /me
+
+curl -X GET "https://graph.microsoft.com/v1.0/me" \
+  -H "Authorization: Bearer {{ _.agent_user_accessToken }}"
+
+
+----
+
+
+# 04.06 /me/messages
+
+curl -X GET "https://graph.microsoft.com/v1.0/me/messages" \
+  -H "Authorization: Bearer {{ _.agent_user_accessToken }}"
+
+
+----
+
+
+# 04.05 /me/getMemberGroups
+
+curl -X POST "https://graph.microsoft.com/v1.0/me/getMemberGroups" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {{ _.agent_user_accessToken }}" \
+  -d '{
+    "securityEnabledOnly": true
+  }'
+
+
+----
+
+
+# 03.01 Create Agentic User (Digital Colleague)
+
+curl -X POST "https://graph.microsoft.com/beta/users" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {{ ACCESS_TOKEN_FROM_OAUTH2_CLIENT_CREDENTIALS }}" \
+  -d '{
+    "@odata.type":"microsoft.graph.agentUser",
+    "displayName": "[as] Agent ID User",
+    "userPrincipalName": "{{ _.agent_user_upn }}",
+    "mailNickname": "{{ _.agent_user_mailNickName }}",
+    "accountEnabled": true,
+    "identityParentId":"{{ _.agent_identity_clientId }}"
+  }'
+
+# Note: Uses OAuth2 client credentials flow with:
+# - Client ID: {{ _.client_id }}
+# - Client Secret: {{ _.client_secret }}
+# - Token URL: {{ _.token_url }}
+# - Scope: https://graph.microsoft.com/.default
+
+
+----
+
+
+# 03.02 Grant OAuth2 permissions to the Agentic User
+
+curl -X POST "https://graph.microsoft.com/beta/oauth2PermissionGrants" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer {{ ACCESS_TOKEN_FROM_OAUTH2_CLIENT_CREDENTIALS }}" \
+  -d '{
+    "clientId": "{{ _.agent_identity_clientId }}",
+    "consentType": "Principal",
+    "principalId": "{{ _.agent_identity_userId }}",
+    "resourceId": "{{ _.ms_graph_object_id }}",
+    "scope":"User.Read groupmember.read.all mail.read",
+    "startTime": "2025-09-24T00:00:00",
+    "expiryTime":"2026-09-24T00:00:00"
+  }'
+
+# Note: Uses OAuth2 client credentials flow with:
+# - Client ID: {{ _.client_id }}
+# - Client Secret: {{ _.client_secret }}
+# - Token URL: {{ _.token_url }}
+# - Scope: https://graph.microsoft.com/.default
+
+
+----
+
+
+# 05.01 Request FIC token for Agent Blueprint
+
+curl -X POST "{{ _.token_url }}" \
+  -H "Content-Type: multipart/form-data" \
+  -u "{{ _.agent_blueprint_appId }}:{{ _.agent_blueprint_clientSecret }}" \
+  -F "scope=api://AzureADTokenExchange/.default" \
+  -F "grant_type=client_credentials" \
+  -F "fmi_path={{ _.agent_identity_clientId }}"
+
+
+----
+
+
+# 05.02 Request Agent ID token using the Blueprint FIC token
+
+curl -X POST "{{ _.token_url }}" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "client_id={{ _.agent_identity_clientId }}&scope=https://graph.microsoft.com/.default&grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion={{ _.agent_blueprint_ficToken }}"
+
+
+----
+
+
+# 06.01 AuthZ Code request for end-user authentication
+
+# This request requires interactive OAuth2 authorization code flow
+# Open the following URL in a browser to get the authorization code:
+# {{ _.authorization_url }}?client_id={{ _.ai_client_id }}&response_type=code&redirect_uri=https://jwt.ms&scope={{ _.scope }}%20offline_access&state=rnd-547902
+
+# Then exchange the authorization code for a token:
+curl -X POST "{{ _.token_url }}" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "client_id={{ _.ai_client_id }}&client_secret={{ _.ai_client_secret }}&grant_type=authorization_code&code={{ AUTHORIZATION_CODE }}&redirect_uri=https://jwt.ms&scope={{ _.scope }}%20offline_access"
+
+# Note: This is an OAuth2 authorization code flow that requires user interaction
+# The final request to https://jwt.ms is just to decode the JWT token
+
+
+----
+
+
+# Environment Variables Referenced:
+# 
+# Base Environment:
+# - token_url: https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token
+# - authorization_url: https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/authorize
+# - ms_graph_object_id: <object_id of the MS Graph service principal of your tenant>
+# - client_id: <management app client id>
+# - client_secret: <management app client secret>
+# - ai_client_id: <ai app client id>
+# - ai_client_secret: <ai app client secret>
+# - agent_user_upn: asAgentIdBPUser@YOUR-TENANT.onmicrosoft.com
+# - agent_user_mailNickName: asAgentIdBPUser
+#
+# Agent Blueprint Sub-Environment (dynamically populated):
+# - scope: api://{{_.agent_blueprint_appObjectId}}/access_agent
+# - agent_blueprint_appObjectId
+# - agent_blueprint_appId
+# - agent_blueprint_clientSecret
+# - agent_blueprint_accessToken
+# - agent_blueprint_ficToken
+# - agent_identity_clientId
+# - agent_identity_userId
+# - agent_identity_ficToken
+# - agent_identity_accessToken
+# - agent_user_accessToken
