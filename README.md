@@ -3,10 +3,10 @@
 ## Prerequisites
  * A Microsoft Entra ID tenant that is onboarded to the Entra Agent ID preview
  * „Management“ application registration: to create artefacts with the following (application) permissions
-   * AgentApplication.Create – to create Agent Blueprint
-   * Application.ReadWrite.OwnedBy – to create client secret for the blueprint and to „expose an API“ for the blueprint
-   * User.ReadWrite.All – to create the Agent User Id
-   * DelegatedPermissionGrant.ReadWrite.All – to grant admin consent for the Agent Identity to be able to act as the Agent User
+   * `Agent ID Administrator` – add your management service princupal to that role to be able to manage Agent Blueprints and Identities
+   * `Application.ReadWrite.OwnedBy` – to create client secret for the blueprint and to „expose an API“ for the blueprint
+   * `User.ReadWrite.All` – to create the Agent User Id
+   * `DelegatedPermissionGrant.ReadWrite.All` – to grant admin consent for the Agent Identity to be able to act as the Agent User
  * AI application client – this will represent your AI application that you are developing
  * Optional – Insomnia, all requests are provided as [Insomnia](https://insomnia.rest/) Collection ([Insomnia5-AgentID.yaml](./Insomnia5-AgentID.yaml)) and PowerShell ([AgentID-PowerShell.ps1](./AgentID-PowerShell.ps1))
 
